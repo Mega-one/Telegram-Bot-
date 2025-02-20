@@ -136,7 +136,7 @@ async def main() -> None:
     init_db()
 
     # Récupérer le token du bot Telegram depuis les variables d'environnement
-    token = os.getenv("BOT_TOKEN")
+    token = os.getenv("TELEGRAM_TOKEN")
     if not token:
         logger.error("Le token Telegram n'est pas défini. Veuillez définir la variable d'environnement TELEGRAM_TOKEN.")
         return
