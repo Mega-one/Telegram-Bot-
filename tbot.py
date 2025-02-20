@@ -76,30 +76,34 @@ async def start(update: Update, context: CallbackContext) -> None:
     reply_markup = ReplyKeyboardMarkup(menu_options, one_time_keyboard=True)
     await update.message.reply_text('Choisissez une option:', reply_markup=reply_markup)
 
-# Fonction pour configurer le message
-async def config_message(update: Update, context: CallbackContext) -> int:
-    await update.message.reply_text('Veuillez entrer votre message :')
-    return CONFIG_MESSAGE
-
-# Fonction pour configurer l'image
-async def config_image(update: Update, context: CallbackContext) -> int:
-    await update.message.reply_text('Veuillez indiquer le chemin de l\'image :')
-    return CONFIG_IMAGE
-
-# Fonction pour configurer la réaction
-async def config_reaction(update: Update, context: CallbackContext) -> int:
-    await update.message.reply_text('Ajoutez des boutons emojis :')
-    return CONFIG_REACTION
-
-# Fonction pour configurer la date
-async def config_date(update: Update, context: CallbackContext) -> int:
-    await update.message.reply_text('Entrez la date et l\'heure de début des publications (format: YYYY-MM-DD HH:MM) :')
-    return CONFIG_DATE
-
-# Fonction pour configurer la fréquence
-async def config_frequency(update: Update, context: CallbackContext) -> int:
-    await update.message.reply_text('Choisissez combien de publications par jour seront envoyées :')
-    return CONFIG_FREQUENCY
+# Fonction pour gérer les messages
+async def handle_message(update: Update, context: CallbackContext) -> None:
+    text = update.message.text
+    if text == '📌 Configurer message':
+        await update.message.reply_text('Veuillez entrer votre message :')
+        context.user_data['awaiting_input'] = 'message'
+    elif text == '📌 Configurer Image':
+        await update.message.reply_text('Veuillez indiquer le chemin de l\'image :')
+        context.user_data['awaiting_input'] = 'image_path'
+    elif text == '📌 Configurer réaction':
+        await update.message.reply_text('Ajoutez des boutons emojis :')
+        context.user_data['awaiting_input'] = 'reaction'
+    elif text == '📌 Configurer Date':
+        await update.message.reply_text('Entrez la date et l\'heure de début des publications (format: YYYY-MM-DD HH:MM) :')
+        context.user_data['awaiting_input'] = 'start_date'
+    elif text == '📌 Configurer Fréquence':
+        await update.message.reply_text('Choisissez combien de publications par jour seront envoyées :')
+        context.user_data['awaiting_input'] = 'frequency'
+    elif text == '📌 Configurer Publié':
+        await publish_now(update, context)
+    elif text == '📌 Voir toutes les configurations':
+        await show_config(update, context)
+    else:
+        key = context.user_data.get('awaiting_input')
+        if key:
+            save_config(key, text)
+            await update.message.reply_text(f'Configuration "{key}" validée : {text}')
+            context.user_data['awaiting_input'] = None
 
 # Fonction pour publier immédiatement
 async def publish_now(update: Update, context: CallbackContext) -> None:
