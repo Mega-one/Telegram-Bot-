@@ -12,6 +12,7 @@ from telegram.ext import (
     filters,
     CallbackContext,
 )
+from aiohttp import web
 
 # Configuration des logs
 logging.basicConfig(
@@ -39,24 +40,6 @@ def init_db():
         conn.commit()
         conn.close()
         logger.info("Base de données initialisée.")
-
-# Fonction pour sauvegarder une configuration
-def save_config(key, value):
-    conn = sqlite3.connect('config.db')
-    cursor = conn.cursor()
-    cursor.execute(f'UPDATE config SET {key} = ? WHERE id = 1', (value,))
-    conn.commit()
-    conn.close()
-    logger.info(f"Configuration '{key}' sauvegardée : {value}")
-
-# Fonction pour récupérer une configuration
-def get_config(key):
-    conn = sqlite3.connect('config.db')
-    cursor = conn.cursor()
-    cursor.execute(f'SELECT {key} FROM config WHERE id = 1')
-    result = cursor.fetchone()
-    conn.close()
-    return result[0] if result else None
 
 # Fonction pour démarrer le bot et afficher le menu
 async def start(update: Update, context: CallbackContext) -> None:
@@ -152,6 +135,14 @@ async def main() -> None:
     if job_queue:
         job_queue.run_repeating(keep_alive, interval=600, first=0)  # Toutes les 10 minutes
 
+    # Démarrer un serveur HTTP factice pour satisfaire Render
+    app = web.Application()
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, '0.0.0.0', 8080)  # Écouter sur le port 8080
+    await site.start()
+    logger.info("Serveur HTTP factice démarré sur le port 8080.")
+
     # Gestion des interruptions
     loop = asyncio.get_event_loop()
     stop_event = asyncio.Event()
@@ -172,6 +163,7 @@ async def main() -> None:
     await application.updater.stop()
     await application.stop()
     await application.shutdown()
+    await runner.cleanup()
 
 if __name__ == '__main__':
     try:
