@@ -121,7 +121,7 @@ def main() -> None:
 
     # Ajouter les gestionnaires de commandes et de messages
     application.add_handler(CommandHandler("start", start))
-       application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     # Ajouter une tâche périodique pour maintenir l'activité
     job_queue = application.job_queue
     job_queue.run_repeating(keep_alive, interval=600, first=0)  # Toutes les 10 minutes
