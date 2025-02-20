@@ -23,7 +23,7 @@ Ce projet est un bot Telegram qui permet de configurer et de gérer des publicat
 
 1. Clonez ce dépôt :
    ```bash
-   git clone https://github.com/votre-utilisateur/telegram-bot-publications.git
+   https://github.com/Mega-one/Telegram-Bot-.git
    cd telegram-bot-publications
    ```
 
