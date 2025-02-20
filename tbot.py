@@ -1,11 +1,31 @@
-from telegram import Update, ReplyKeyboardMarkup
-from telegram.ext import Application, CommandHandler, MessageHandler, filters, CallbackContext, JobQueue
-import sqlite3
 import os
+import signal
+import asyncio
+import logging
+import sqlite3
 from datetime import datetime
+from telegram import Update, ReplyKeyboardMarkup
+from telegram.ext import (
+    Application,
+    CommandHandler,
+    MessageHandler,
+    filters,
+    CallbackContext,
+    ConversationHandler,
+)
+
+# Configuration des logs
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+)
+logger = logging.getLogger(__name__)
+
+# États pour la conversation
+CONFIG_MESSAGE, CONFIG_IMAGE, CONFIG_REACTION, CONFIG_DATE, CONFIG_FREQUENCY = range(5)
 
 # Initialisation de la base de données
-async def init_db():
+def init_db():
     if not os.path.exists('config.db'):
         conn = sqlite3.connect('config.db')
         cursor = conn.cursor()
@@ -20,39 +40,30 @@ async def init_db():
                 published BOOLEAN DEFAULT 0
             )
         ''')
-        # Insérer une ligne vide si la table est vide
-        cursor.execute('INSERT OR IGNORE INTO config (id) VALUES (1)')
         conn.commit()
         conn.close()
+        logger.info("Base de données initialisée.")
 
 # Fonction pour sauvegarder une configuration
-async def save_config(key, value):
+def save_config(key, value):
     conn = sqlite3.connect('config.db')
     cursor = conn.cursor()
     cursor.execute(f'UPDATE config SET {key} = ? WHERE id = 1', (value,))
     conn.commit()
     conn.close()
+    logger.info(f"Configuration '{key}' sauvegardée : {value}")
 
-# Fonction pour récupérer toutes les configurations
-async def get_all_config():
+# Fonction pour récupérer une configuration
+def get_config(key):
     conn = sqlite3.connect('config.db')
     cursor = conn.cursor()
-    cursor.execute('SELECT message, image_path, reaction, start_date, frequency, published FROM config WHERE id = 1')
+    cursor.execute(f'SELECT {key} FROM config WHERE id = 1')
     result = cursor.fetchone()
     conn.close()
-    if result:
-        return {
-            'message': result[0],
-            'image_path': result[1],
-            'reaction': result[2],
-            'start_date': result[3],
-            'frequency': result[4],
-            'published': result[5]
-        }
-    return None
+    return result[0] if result else None
 
 # Fonction pour démarrer le bot et afficher le menu
-async def start(update: Application, context: CallbackContext) -> None:
+async def start(update: Update, context: CallbackContext) -> None:
     menu_options = [
         ['📌 Configurer message'],
         ['📌 Configurer Image'],
@@ -63,74 +74,114 @@ async def start(update: Application, context: CallbackContext) -> None:
         ['📌 Voir toutes les configurations']
     ]
     reply_markup = ReplyKeyboardMarkup(menu_options, one_time_keyboard=True)
-    application.message.reply_text('Choisissez une option:', reply_markup=reply_markup)
+    await update.message.reply_text('Choisissez une option:', reply_markup=reply_markup)
 
-# Fonction pour gérer les messages textuels
-async def handle_message(application: Application, context: CallbackContext) -> None:
-    text = application.message.text
-    if text == '📌 Configurer message':
-        application.message.reply_text('Veuillez entrer votre message')
-        context.user_data['awaiting_input'] = 'message'
-    elif text == '📌 Configurer Image':
-        application.message.reply_text('Veuillez indiquer le chemin de l\'image')
-        context.user_data['awaiting_input'] = 'image_path'
-    elif text == '📌 Configurer réaction':
-        application.message.reply_text('Ajoutez des boutons emojis')
-        context.user_data['awaiting_input'] = 'reaction'
-    elif text == '📌 Configurer Date':
-        application.message.reply_text('Entrez la date et l\'heure de début des publications (format: YYYY-MM-DD HH:MM)')
-        context.user_data['awaiting_input'] = 'start_date'
-    elif text == '📌 Configurer Fréquence':
-        application.message.reply_text('Choisissez combien de publications par jour seront envoyées')
-        context.user_data['awaiting_input'] = 'frequency'
-    elif text == '📌 Configurer Publié':
-        application.message.reply_text('Publication immédiate')
-        save_config('published', 1)
-        application.message.reply_text('Publication validée.')
-    elif text == '📌 Voir toutes les configurations':
-        config = get_all_config()
-        if config:
-            response = (
-                f"📝 Message : {config['message']}\n"
-                f"🖼️ Image : {config['image_path']}\n"
-                f"🎉 Réaction : {config['reaction']}\n"
-                f"📅 Date de début : {config['start_date']}\n"
-                f"⏱️ Fréquence : {config['frequency']} publications/jour\n"
-                f"🚀 Publié : {'Oui' if config['published'] else 'Non'}"
-            )
-            application.message.reply_text(response)
-        else:
-            application.message.reply_text('Aucune configuration trouvée.')
-    else:
-        key = context.user_data.get('awaiting_input')
-        if key:
-            save_config(key, text)
-            application.message.reply_text(f'Configuration "{key}" validée: {text}')
-            context.user_data['awaiting_input'] = None
+# Fonction pour configurer le message
+async def config_message(update: Update, context: CallbackContext) -> int:
+    await update.message.reply_text('Veuillez entrer votre message :')
+    return CONFIG_MESSAGE
+
+# Fonction pour configurer l'image
+async def config_image(update: Update, context: CallbackContext) -> int:
+    await update.message.reply_text('Veuillez indiquer le chemin de l\'image :')
+    return CONFIG_IMAGE
+
+# Fonction pour configurer la réaction
+async def config_reaction(update: Update, context: CallbackContext) -> int:
+    await update.message.reply_text('Ajoutez des boutons emojis :')
+    return CONFIG_REACTION
+
+# Fonction pour configurer la date
+async def config_date(update: Update, context: CallbackContext) -> int:
+    await update.message.reply_text('Entrez la date et l\'heure de début des publications (format: YYYY-MM-DD HH:MM) :')
+    return CONFIG_DATE
+
+# Fonction pour configurer la fréquence
+async def config_frequency(update: Update, context: CallbackContext) -> int:
+    await update.message.reply_text('Choisissez combien de publications par jour seront envoyées :')
+    return CONFIG_FREQUENCY
+
+# Fonction pour publier immédiatement
+async def publish_now(update: Update, context: CallbackContext) -> None:
+    save_config('published', 1)
+    await update.message.reply_text('Publication immédiate effectuée.')
+
+# Fonction pour afficher toutes les configurations
+async def show_config(update: Update, context: CallbackContext) -> None:
+    config = {
+        'message': get_config('message'),
+        'image_path': get_config('image_path'),
+        'reaction': get_config('reaction'),
+        'start_date': get_config('start_date'),
+        'frequency': get_config('frequency'),
+        'published': get_config('published'),
+    }
+    response = (
+        f"📝 Message : {config['message']}\n"
+        f"🖼️ Image : {config['image_path']}\n"
+        f"🎉 Réaction : {config['reaction']}\n"
+        f"📅 Date de début : {config['start_date']}\n"
+        f"⏱️ Fréquence : {config['frequency']} publications/jour\n"
+        f"🚀 Publié : {'Oui' if config['published'] else 'Non'}"
+    )
+    await update.message.reply_text(response)
 
 # Fonction pour maintenir l'activité du bot
-async def keep_alive(context: CallbackContext):
-    print("Bot actif à", datetime.now())
+async def keep_alive(context: CallbackContext) -> None:
+    logger.info("Bot actif à %s", datetime.now())
 
+# Fonction principale asynchrone
 async def main() -> None:
     # Initialiser la base de données
     init_db()
 
-    # Remplacez 'YOUR_TOKEN' par votre token de bot Telegram
-    application = Application.builder().token("BOT_TOKEN").build()
+    # Récupérer le token du bot Telegram depuis les variables d'environnement
+    token = os.getenv("BOT_TOKEN")
+    if not token:
+        logger.error("Le token Telegram n'est pas défini. Veuillez définir la variable d'environnement TELEGRAM_TOKEN.")
+        return
+
+    # Créer l'application Telegram
+    application = Application.builder().token(token).build()
 
     # Ajouter les gestionnaires de commandes et de messages
     application.add_handler(CommandHandler("start", start))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-    # Ajouter une tâche périodique pour maintenir l'activité
-      # Configurer JobQueue pour maintenir l'activité
+
+    # Configurer JobQueue pour maintenir l'activité
     job_queue = application.job_queue
     if job_queue:
-        job_queue.run_repeating(keep_alive, interval=600, first=0)   # Toutes les 10 minutes
+        job_queue.run_repeating(keep_alive, interval=600, first=0)  # Toutes les 10 minutes
+
+    # Gestion des interruptions
+    loop = asyncio.get_event_loop()
+    stop_event = asyncio.Event()
+
+    def signal_handler(signum, frame):
+        logger.info(f"Signal {signum} reçu. Arrêt du bot...")
+        stop_event.set()
+
+    # Enregistrer les gestionnaires de signaux
+    for sig in (signal.SIGTERM, signal.SIGINT):
+        loop.add_signal_handler(sig, signal_handler, sig, None)
 
     # Démarrage du bot
-    await application.run_polling()
+    logger.info("Démarrage du bot...")
+    await application.initialize()
+    await application.start()
+    await application.updater.start_polling()
+
+    # Attendre un signal d'arrêt
+    await stop_event.wait()
+
+    # Arrêt propre du bot
+    logger.info("Arrêt du bot...")
+    await application.updater.stop()
+    await application.stop()
+    await application.shutdown()
 
 if __name__ == '__main__':
-       import asyncio
-       asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except Exception as e:
+        logger.error(f"Erreur lors de l'exécution du bot : {e}")
