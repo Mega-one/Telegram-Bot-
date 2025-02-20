@@ -11,7 +11,6 @@ from telegram.ext import (
     MessageHandler,
     filters,
     CallbackContext,
-    ConversationHandler,
 )
 
 # Configuration des logs
@@ -20,9 +19,6 @@ logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger(__name__)
-
-# États pour la conversation
-CONFIG_MESSAGE, CONFIG_IMAGE, CONFIG_REACTION, CONFIG_DATE, CONFIG_FREQUENCY = range(5)
 
 # Initialisation de la base de données
 def init_db():
@@ -145,12 +141,11 @@ async def main() -> None:
         logger.error("Le token Telegram n'est pas défini. Veuillez définir la variable d'environnement TELEGRAM_TOKEN.")
         return
 
-    # Créer l'application Telegram
+    # Créer l'application Telegram avec drop_pending_updates=True
     application = Application.builder().token(token).build()
-
-    # Ajouter les gestionnaires de commandes et de messages
-    application.add_handler(CommandHandler("start", start))
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+    await application.initialize()
+    await application.start()
+    await application.updater.start_polling(drop_pending_updates=True)  # Ignorer les mises à jour en attente
 
     # Configurer JobQueue pour maintenir l'activité
     job_queue = application.job_queue
@@ -168,12 +163,6 @@ async def main() -> None:
     # Enregistrer les gestionnaires de signaux
     for sig in (signal.SIGTERM, signal.SIGINT):
         loop.add_signal_handler(sig, signal_handler, sig, None)
-
-    # Démarrage du bot
-    logger.info("Démarrage du bot...")
-    await application.initialize()
-    await application.start()
-    await application.updater.start_polling()
 
     # Attendre un signal d'arrêt
     await stop_event.wait()
