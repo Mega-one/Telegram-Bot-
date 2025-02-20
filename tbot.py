@@ -5,7 +5,7 @@ import os
 from datetime import datetime
 
 # Initialisation de la base de données
-def init_db():
+async def init_db():
     if not os.path.exists('config.db'):
         conn = sqlite3.connect('config.db')
         cursor = conn.cursor()
@@ -26,7 +26,7 @@ def init_db():
         conn.close()
 
 # Fonction pour sauvegarder une configuration
-def save_config(key, value):
+async def save_config(key, value):
     conn = sqlite3.connect('config.db')
     cursor = conn.cursor()
     cursor.execute(f'UPDATE config SET {key} = ? WHERE id = 1', (value,))
@@ -34,7 +34,7 @@ def save_config(key, value):
     conn.close()
 
 # Fonction pour récupérer toutes les configurations
-def get_all_config():
+async def get_all_config():
     conn = sqlite3.connect('config.db')
     cursor = conn.cursor()
     cursor.execute('SELECT message, image_path, reaction, start_date, frequency, published FROM config WHERE id = 1')
@@ -52,7 +52,7 @@ def get_all_config():
     return None
 
 # Fonction pour démarrer le bot et afficher le menu
-def start(update: Application, context: CallbackContext) -> None:
+async def start(update: Application, context: CallbackContext) -> None:
     menu_options = [
         ['📌 Configurer message'],
         ['📌 Configurer Image'],
@@ -66,7 +66,7 @@ def start(update: Application, context: CallbackContext) -> None:
     application.message.reply_text('Choisissez une option:', reply_markup=reply_markup)
 
 # Fonction pour gérer les messages textuels
-def handle_message(application: Application, context: CallbackContext) -> None:
+async def handle_message(application: Application, context: CallbackContext) -> None:
     text = application.message.text
     if text == '📌 Configurer message':
         application.message.reply_text('Veuillez entrer votre message')
@@ -109,10 +109,10 @@ def handle_message(application: Application, context: CallbackContext) -> None:
             context.user_data['awaiting_input'] = None
 
 # Fonction pour maintenir l'activité du bot
-def keep_alive(context: CallbackContext):
+async def keep_alive(context: CallbackContext):
     print("Bot actif à", datetime.now())
 
-def main() -> None:
+async def main() -> None:
     # Initialiser la base de données
     init_db()
 
