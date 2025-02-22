@@ -22,7 +22,7 @@ from aiohttp import web
    logger = logging.getLogger(__name__)
 
    # Initialisation de la base de données
-   def init_db():
+def init_db():
        if not os.path.exists('config.db'):
            conn = sqlite3.connect('config.db')
            cursor = conn.cursor()
@@ -42,7 +42,7 @@ from aiohttp import web
            logger.info("Base de données initialisée.")
 
    # Fonction pour démarrer le bot et afficher le menu
-   async def start(update: Update, context: CallbackContext) -> None:
+async def start(update: Update, context: CallbackContext) -> None:
        menu_options = [
            ['📌 Configurer message'],
            ['📌 Configurer Image'],
@@ -56,7 +56,7 @@ from aiohttp import web
        await update.message.reply_text('Choisissez une option:', reply_markup=reply_markup)
 
    # Fonction pour gérer les messages
-   async def handle_message(update: Update, context: CallbackContext) -> None:
+async def handle_message(update: Update, context: CallbackContext) -> None:
        text = update.message.text
        if text == '📌 Configurer message':
            await update.message.reply_text('Veuillez entrer votre message :')
@@ -85,12 +85,12 @@ from aiohttp import web
                context.user_data['awaiting_input'] = None
 
    # Fonction pour publier immédiatement
-   async def publish_now(update: Update, context: CallbackContext) -> None:
+async def publish_now(update: Update, context: CallbackContext) -> None:
        save_config('published', 1)
        await update.message.reply_text('Publication immédiate effectuée.')
 
    # Fonction pour afficher toutes les configurations
-   async def show_config(update: Update, context: CallbackContext) -> None:
+async def show_config(update: Update, context: CallbackContext) -> None:
        config = {
            'message': get_config('message'),
            'image_path': get_config('image_path'),
@@ -110,11 +110,11 @@ from aiohttp import web
        await update.message.reply_text(response)
 
    # Fonction pour maintenir l'activité du bot
-   async def keep_alive(context: CallbackContext) -> None:
+async def keep_alive(context: CallbackContext) -> None:
        logger.info("Bot actif à %s", datetime.now())
 
    # Fonction principale asynchrone
-   async def main() -> None:
+async def main() -> None:
        # Initialiser la base de données
        init_db()
 
@@ -160,7 +160,7 @@ from aiohttp import web
        await application.shutdown()
        await runner.cleanup()
 
-   if __name__ == '__main__':
+if __name__ == '__main__':
        try:
            asyncio.run(main())
        except Exception as e:
