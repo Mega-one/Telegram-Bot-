@@ -150,7 +150,7 @@ async def main() -> None:
     # Configurer JobQueue pour maintenir l'activité
     job_queue = application.job_queue
     if job_queue:
-        job_queue.run_repeating(keep_alive, interval=600, first=0)  # Toutes les 10 minutes
+        job_queue.run_repeating(keep_alive, interval=40, first=0)  # Toutes les 10 minutes
 
     # Gestion des interruptions
     loop = asyncio.get_event_loop()
