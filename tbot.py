@@ -1,18 +1,18 @@
-   import os
-   import signal
-   import asyncio
-   import logging
-   import sqlite3
-   from datetime import datetime
-   from telegram import Update, ReplyKeyboardMarkup
-   from telegram.ext import (
+import os
+import signal
+import asyncio
+import logging
+import sqlite3
+from datetime import datetime
+from telegram import Update, ReplyKeyboardMarkup
+from telegram.ext import (
        Application,
        CommandHandler,
        MessageHandler,
        filters,
        CallbackContext,
    )
-   from aiohttp import web
+from aiohttp import web
 
    # Configuration des logs
    logging.basicConfig(
