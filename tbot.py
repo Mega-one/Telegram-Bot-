@@ -15,11 +15,11 @@ from telegram.ext import (
 from aiohttp import web
 
    # Configuration des logs
-   logging.basicConfig(
+logging.basicConfig(
        level=logging.INFO,
        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
    )
-   logger = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
    # Initialisation de la base de données
 def init_db():
